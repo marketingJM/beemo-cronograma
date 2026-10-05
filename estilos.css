@@ -323,3 +323,6 @@ button.lnk{border:0;background:0}
   .u-acts{justify-content:flex-start}
 }
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* logo negro: se vuelve blanco en modo oscuro */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .logo{filter:invert(1)} }

@@ -45,9 +45,12 @@ let perfil = null;
 let correoActual = "";
 
 // ---------- datos para la página ----------
+// Vista pública: el enlace lleva ?ver=CLAVE y lee la copia pública sin iniciar sesión.
+const VISTA = new URLSearchParams(location.search).get("ver");
 window.BeemoData = {
   async get() {
-    const s = await getDoc(doc(db, "datos", "cronograma"));
+    const ref = VISTA ? doc(db, "publico", VISTA) : doc(db, "datos", "cronograma");
+    const s = await getDoc(ref);
     if (!s.exists()) return { csv: "" };
     const d = s.data();
     let nota = "";
@@ -102,7 +105,18 @@ $("g-olvide").onclick = async () => {
 
 $("btn-salir").onclick = () => signOut(auth);
 
+function modoVista() {
+  window.BeemoAuth = { isAdmin: false };
+  limpiarMsg();
+  gate.hidden = true;
+  $("who").textContent = "Vista pública";
+  $("btn-admin").hidden = true;
+  $("btn-salir").hidden = true;
+  if (window.BeemoApp) window.BeemoApp.load();
+}
+
 onAuthStateChanged(auth, async (user) => {
+  if (VISTA) { modoVista(); return; }
   perfil = null;
   window.BeemoAuth = { isAdmin: false };
   if (!user) {

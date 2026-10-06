@@ -331,3 +331,7 @@ button.lnk{border:0;background:0}
 button.mo-h{width:100%;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 button.mo-h:hover b{color:var(--violeta)}
 .mo-flecha{display:inline-block;width:1.2em;color:var(--muted)}
+
+/* fecha de activación y moneda debajo de cada evento */
+.ev-extra{display:block;margin-top:6px;font-size:.9rem;color:var(--muted)}
+.ev-extra b{color:var(--ink);font-weight:600}

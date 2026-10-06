@@ -10,8 +10,21 @@ var state = {
   events: [], source:"demo", fetchedAt:null,
   view:"agenda", month:null, onlyUpcoming:false,
   filters:{mentor:"",tipo:"",q:""},
-  loading:false, settled:false
+  loading:false, settled:false,
+  plegados: leerPlegados()
 };
+/* Meses minimizados en la agenda (se recuerdan en este navegador) */
+function leerPlegados(){
+  try{ return JSON.parse(localStorage.getItem("beemo-plegados") || "null"); }catch(e){ return null; }
+}
+function guardarPlegados(){
+  try{ localStorage.setItem("beemo-plegados", JSON.stringify(state.plegados)); }catch(e){}
+}
+function mesPlegado(key, d){
+  if(state.plegados && key in state.plegados) return state.plegados[key];
+  var finMes = new Date(d.getFullYear(), d.getMonth()+1, 0);
+  return finMes < TODAY;   // por defecto: los meses que ya pasaron empiezan minimizados
+}
 
 /* ---------------- fechas ---------------- */
 function d0(dt){ return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()); }
@@ -109,6 +122,8 @@ var ALIASES = {
   responsable:["responsable","owner","encargado"],
   notas:["notas","nota","observaciones","comentarios","detalle"]
 };
+var ALIAS_SET = {};
+Object.keys(ALIASES).forEach(function(k){ ALIASES[k].forEach(function(a){ ALIAS_SET[a] = true; }); });
 function findCols(header){
   var idx={};
   Object.keys(ALIASES).forEach(function(key){
@@ -119,13 +134,41 @@ function findCols(header){
   });
   return idx;
 }
-function buildEvents(rows){
-  if(!rows.length) return [];
-  var hi=0;
+/* Columnas que siempre se muestran (la página las necesita para funcionar) */
+var FIJAS = ["evento","mentor","tipo","inicio","fin"];
+function headerRow(rows){
   for(var i=0;i<Math.min(rows.length,6);i++){
-    if(rows[i].some(function(c){ return norm(c)==="evento" || ALIASES.inicio.indexOf(norm(c))>=0; })){ hi=i; break; }
+    if(rows[i].some(function(c){ return norm(c)==="evento" || ALIASES.inicio.indexOf(norm(c))>=0; })) return i;
   }
-  var idx = findCols(rows[hi]);
+  return 0;
+}
+/* Lista de columnas del Sheet para el panel «Columnas» */
+function listarColumnas(rows){
+  if(!rows.length) return [];
+  var head = rows[headerRow(rows)], idx = findCols(head), fijas = {};
+  FIJAS.forEach(function(k){ if(idx[k]>=0) fijas[idx[k]] = true; });
+  var out = [];
+  head.forEach(function(h,i){
+    if(String(h).trim()) out.push({ nombre: String(h).trim(), clave: norm(h), fija: !!fijas[i] });
+  });
+  return out;
+}
+function buildEvents(rows, ocultas){
+  if(!rows.length) return [];
+  var oc = {}; (ocultas||[]).forEach(function(h){ oc[norm(h)] = true; });
+  var hi = headerRow(rows);
+  var head = rows[hi];
+  var idx = findCols(head);
+  var usadas = {};
+  Object.keys(idx).forEach(function(k){
+    if(idx[k] < 0) return;
+    if(oc[norm(head[idx[k]])] && FIJAS.indexOf(k) < 0) idx[k] = -1;   // columna oculta por el administrador
+    else usadas[idx[k]] = true;
+  });
+  var extras = [];
+  head.forEach(function(h,i){
+    if(!usadas[i] && String(h).trim() && !oc[norm(h)] && !(norm(h) in ALIAS_SET)) extras.push(i);
+  });
   var get = function(r,k){ return idx[k]>=0 ? (r[idx[k]]||"") : ""; };
   var evs=[];
   for(var j=hi+1;j<rows.length;j++){
@@ -155,7 +198,9 @@ function buildEvents(rows){
       ingUsd: (ventas !== null && tUsd) ? ventas*tUsd : null,
       ingCop: (ventas !== null && tCop) ? ventas*tCop : null,
       responsable: get(r,"responsable"),
-      notas: get(r,"notas")
+      notas: get(r,"notas"),
+      extras: extras.map(function(i){ return [String(head[i]).trim(), String(r[i]||"").trim()]; })
+                    .filter(function(x){ return x[1]; })
     });
   }
   evs.sort(function(a,b){ return a.ini - b.ini || a.mentor.localeCompare(b.mentor,"es"); });
@@ -212,7 +257,7 @@ function load(opts){
   window.BeemoData.get().then(function(res){
     state.loading = false;
     state.settled = true;
-    var evs = buildEvents(parseCSV(res && res.csv || ""));
+    var evs = buildEvents(parseCSV(res && res.csv || ""), res && res.ocultas);
     state.events = evs;
     state.source = "sheet";
     state.fetchedAt = Date.now();
@@ -322,7 +367,7 @@ function meterHtml(e, color){
          '<div class="meter-cap">'+esc(cap)+"</div>";
 }
 function ventasHtml(e){
-  if(e.ventas === null && !e.ticketUsd && !e.ticketCop) return "";
+  if(e.ventas === null) return "";   // el ticket ya aparece en la línea de arriba
   var bits = [];
   if(e.ventas !== null) bits.push("<b>"+miles(e.ventas)+"</b> "+(e.ventas===1?"venta":"ventas"));
   var ing = ingresoTxt(e);
@@ -355,8 +400,12 @@ function renderAgenda(){
   var html = "";
   order.forEach(function(key){
     var g = byMonth[key];
-    html += '<div class="mo-h"><b>'+cap(MESES[g.d.getMonth()])+" "+g.d.getFullYear()+"</b><em>"+
-            g.items.length+(g.items.length===1?" evento":" eventos")+"</em></div>";
+    var plegado = mesPlegado(key, g.d);
+    html += '<button class="mo-h" type="button" data-mes="'+key+'" aria-expanded="'+(!plegado)+'">'+
+            '<b><span class="mo-flecha" aria-hidden="true">'+(plegado ? "▸" : "▾")+"</span>"+
+            cap(MESES[g.d.getMonth()])+" "+g.d.getFullYear()+"</b><em>"+
+            g.items.length+(g.items.length===1?" evento":" eventos")+"</em></button>";
+    if(plegado) return;
     g.items.forEach(function(e){
       var color = tipoColor(e.tipo);
       var days = dayDiff(e.ini, e.fin)+1;
@@ -556,7 +605,8 @@ function openDetail(ev){
     ["Ingreso estimado", esc(ingresoTxt(ev))],
     ["Responsable", esc(ev.responsable)],
     ["Notas", esc(ev.notas)]
-  ].filter(function(r){ return r[1]; });
+  ].concat((ev.extras||[]).map(function(x){ return [esc(x[0]), esc(x[1])]; }))
+   .filter(function(r){ return r[1]; });
   document.getElementById("d-body").innerHTML = rows.map(function(r){ return "<dt>"+r[0]+"</dt><dd>"+r[1]+"</dd>"; }).join("");
   show("ov-detail");
 }
@@ -603,6 +653,17 @@ document.addEventListener("click", function(ev){
     if(e) openDetail(e);
     return;
   }
+  var mes = ev.target.closest ? ev.target.closest("[data-mes]") : null;
+  if(mes){
+    var k = mes.getAttribute("data-mes");
+    var p = k.split("-");
+    var actual = mesPlegado(k, new Date(+p[0], +p[1], 1));
+    state.plegados = state.plegados || {};
+    state.plegados[k] = !actual;
+    guardarPlegados();
+    renderView();
+    return;
+  }
   var c = ev.target.closest ? ev.target.closest("[data-close]") : null;
   if(c){ hide(c.getAttribute("data-close")); return; }
   if(ev.target.classList && ev.target.classList.contains("ov")) ev.target.hidden = true;
@@ -642,7 +703,8 @@ renderAll();
 window.BeemoApp = {
   load: function(){ load({force:true}); },
   reset: function(){ state.events = []; state.settled = false; state.source = "demo"; renderAll(); },
-  contar: function(text){ return buildEvents(parseCSV(text)).length; }
+  contar: function(text){ return buildEvents(parseCSV(text)).length; },
+  columnas: function(text){ return listarColumnas(parseCSV(text)); }
 };
 
 setInterval(function(){ if(!document.hidden) load({force:true}); }, 600000);

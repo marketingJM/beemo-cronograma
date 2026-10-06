@@ -120,8 +120,12 @@ var ALIASES = {
   asistentes:["asistentes","asistencia","cantidad de asistentes"],
   pct:["% asistencia","porcentaje de asistencia","% de asistencia","pct asistencia"],
   responsable:["responsable","owner","encargado"],
-  notas:["notas","nota","observaciones","comentarios","detalle"]
+  notas:["notas","nota","observaciones","comentarios","detalle"],
+  activacion:["fecha de activacion","fecha activacion","activacion","fecha de la activacion"],
+  moneda:["moneda transaccion","moneda de transaccion","moneda de la transaccion","moneda"]
 };
+/* Para estas columnas basta con que el título contenga la palabra */
+var CONTIENE = { activacion:"activacion", moneda:"moneda" };
 var ALIAS_SET = {};
 Object.keys(ALIASES).forEach(function(k){ ALIASES[k].forEach(function(a){ ALIAS_SET[a] = true; }); });
 function findCols(header){
@@ -130,6 +134,11 @@ function findCols(header){
     idx[key] = -1;
     for(var i=0;i<header.length;i++){
       if(ALIASES[key].indexOf(norm(header[i])) >= 0){ idx[key]=i; return; }
+    }
+    if(CONTIENE[key]){
+      for(var k=0;k<header.length;k++){
+        if(norm(header[k]).indexOf(CONTIENE[key]) >= 0){ idx[key]=k; return; }
+      }
     }
   });
   return idx;
@@ -199,6 +208,9 @@ function buildEvents(rows, ocultas){
       ingCop: (ventas !== null && tCop) ? ventas*tCop : null,
       responsable: get(r,"responsable"),
       notas: get(r,"notas"),
+      activacion: parseDate(get(r,"activacion")),
+      activacionTxt: get(r,"activacion"),
+      moneda: get(r,"moneda"),
       extras: extras.map(function(i){ return [String(head[i]).trim(), String(r[i]||"").trim()]; })
                     .filter(function(x){ return x[1]; })
     });
@@ -375,6 +387,13 @@ function ventasHtml(e){
   else if(ticketTxt(e)) bits.push("ticket "+esc(ticketTxt(e)));
   return '<div class="ventas">'+bits.join(" · ")+"</div>";
 }
+function activacionTxt(e){ return e.activacion ? fmtLong(e.activacion) : (e.activacionTxt || ""); }
+function extraHtml(e){
+  var bits = [];
+  if(activacionTxt(e)) bits.push("Activación: <b>"+esc(activacionTxt(e))+"</b>");
+  if(e.moneda) bits.push("Moneda: <b>"+esc(e.moneda)+"</b>");
+  return bits.length ? '<span class="ev-extra">'+bits.join(" · ")+"</span>" : "";
+}
 function renderAgenda(){
   var evs = filtered().slice().sort(function(a,b){ return a.ini-b.ini; });
   if(!state.events.length){
@@ -418,7 +437,7 @@ function renderAgenda(){
             (days>1 ? " · "+days+" días" : "")+
             (e.responsable ? " · "+esc(e.responsable) : "")+
             (ticketTxt(e) ? " · ticket "+esc(ticketTxt(e)) : "")+"</span>"+
-          meterHtml(e, color)+ventasHtml(e)+
+          extraHtml(e)+meterHtml(e, color)+ventasHtml(e)+
         "</span></button>";
     });
   });
@@ -597,6 +616,8 @@ function openDetail(ev){
   var rows = [
     ["Tipo", '<span class="pill tipo" style="background:'+color+'">'+esc(ev.tipo)+"</span>"],
     ["Fechas", esc(fmtRange(ev.ini, ev.fin))],
+    ["Fecha de activación", esc(activacionTxt(ev))],
+    ["Moneda transacción", esc(ev.moneda)],
     ["Registros", ev.registros !== null ? esc(miles(ev.registros)) : ""],
     ["Asistentes", ev.asistentes !== null ? esc(miles(ev.asistentes)) : ""],
     ["Asistencia", ev.pct !== null ? meterHtml(ev, color) : ""],

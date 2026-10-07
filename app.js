@@ -122,7 +122,8 @@ var ALIASES = {
   responsable:["responsable","owner","encargado"],
   notas:["notas","nota","observaciones","comentarios","detalle"],
   activacion:["fecha de activacion","fecha activacion","activacion","fecha de la activacion"],
-  moneda:["moneda transaccion","moneda de transaccion","moneda de la transaccion","moneda"]
+  moneda:["moneda transaccion","moneda de transaccion","moneda de la transaccion","moneda"],
+  ingresoReal:["ingreso usd","ingresos usd","ingreso en usd","ingresos en usd","ingreso real usd"]
 };
 /* Para estas columnas basta con que el título contenga la palabra */
 var CONTIENE = { activacion:"activacion", moneda:"moneda" };
@@ -138,6 +139,12 @@ function findCols(header){
     if(CONTIENE[key]){
       for(var k=0;k<header.length;k++){
         if(norm(header[k]).indexOf(CONTIENE[key]) >= 0){ idx[key]=k; return; }
+      }
+    }
+    if(key === "ingresoReal"){
+      for(var j=0;j<header.length;j++){
+        var h = norm(header[j]);
+        if(h.indexOf("ingreso") >= 0 && h.indexOf("usd") >= 0){ idx[key]=j; return; }
       }
     }
   });
@@ -211,6 +218,7 @@ function buildEvents(rows, ocultas){
       activacion: parseDate(get(r,"activacion")),
       activacionTxt: get(r,"activacion"),
       moneda: get(r,"moneda"),
+      ingresoReal: parseNum(get(r,"ingresoReal")),
       extras: extras.map(function(i){ return [String(head[i]).trim(), String(r[i]||"").trim()]; })
                     .filter(function(x){ return x[1]; })
     });
@@ -387,6 +395,11 @@ function ventasHtml(e){
   else if(ticketTxt(e)) bits.push("ticket "+esc(ticketTxt(e)));
   return '<div class="ventas">'+bits.join(" · ")+"</div>";
 }
+/* Ingresos USD: la columna del Sheet si existe; si no, el cálculo ticket × ventas */
+function ingresoUsdTxt(e){
+  if(e.ingresoReal !== null && e.ingresoReal !== undefined) return usd(e.ingresoReal);
+  return e.ingUsd ? usd(e.ingUsd)+" (estimado)" : "";
+}
 function activacionTxt(e){ return e.activacion ? fmtLong(e.activacion) : (e.activacionTxt || ""); }
 function extraHtml(e){
   var bits = [];
@@ -431,13 +444,13 @@ function renderAgenda(){
       html += '<button class="ev" type="button" data-ev="'+e.id+'">'+
         '<span class="datebox" style="--c:'+color+'"><b>'+e.ini.getDate()+"</b><span>"+MESES_C[e.ini.getMonth()]+"</span></span>"+
         '<span class="ev-body">'+
-          '<span class="ev-top"><h3>'+esc(e.evento)+"</h3>"+
+          '<span class="ev-top"><h3>'+esc(e.mentor)+"</h3>"+
             '<span class="pill tipo" style="background:'+color+'">'+esc(e.tipo)+"</span></span>"+
-          '<span class="ev-meta">'+esc(e.mentor)+" · "+esc(fmtRange(e.ini,e.fin))+
-            (days>1 ? " · "+days+" días" : "")+
-            (e.responsable ? " · "+esc(e.responsable) : "")+
-            (ticketTxt(e) ? " · ticket "+esc(ticketTxt(e)) : "")+"</span>"+
-          extraHtml(e)+meterHtml(e, color)+ventasHtml(e)+
+          '<span class="ev-sub">'+esc(e.evento)+"</span>"+
+          '<span class="ev-datos">'+
+            (ingresoUsdTxt(e) ? '<span>Ingresos USD: <b>'+esc(ingresoUsdTxt(e))+"</b></span>" : "")+
+            '<span>Inicio: <b>'+esc(fmtLong(e.ini))+"</b></span>"+
+          "</span>"+
         "</span></button>";
     });
   });
@@ -611,11 +624,12 @@ function empty(){
 /* ---------------- detalle ---------------- */
 function openDetail(ev){
   var color = tipoColor(ev.tipo);
-  document.getElementById("d-title").textContent = ev.evento;
-  document.getElementById("d-sub").textContent = ev.mentor;
+  document.getElementById("d-title").textContent = ev.mentor;
+  document.getElementById("d-sub").textContent = ev.evento;
+  var dias = dayDiff(ev.ini, ev.fin)+1;
   var rows = [
     ["Tipo", '<span class="pill tipo" style="background:'+color+'">'+esc(ev.tipo)+"</span>"],
-    ["Fechas", esc(fmtRange(ev.ini, ev.fin))],
+    ["Fechas", esc(fmtRange(ev.ini, ev.fin))+(dias>1 ? " · "+dias+" días" : "")],
     ["Fecha de activación", esc(activacionTxt(ev))],
     ["Moneda transacción", esc(ev.moneda)],
     ["Registros", ev.registros !== null ? esc(miles(ev.registros)) : ""],
@@ -623,7 +637,8 @@ function openDetail(ev){
     ["Asistencia", ev.pct !== null ? meterHtml(ev, color) : ""],
     ["Ticket", esc(ticketTxt(ev))],
     ["Ventas", ev.ventas !== null ? esc(miles(ev.ventas)) : ""],
-    ["Ingreso estimado", esc(ingresoTxt(ev))],
+    ["Ingresos USD", ev.ingresoReal !== null ? esc(usd(ev.ingresoReal)) : ""],
+    ["Ingreso estimado", ev.ingresoReal === null ? esc(ingresoTxt(ev)) : (ev.ingCop ? esc(cop(ev.ingCop)) : "")],
     ["Responsable", esc(ev.responsable)],
     ["Notas", esc(ev.notas)]
   ].concat((ev.extras||[]).map(function(x){ return [esc(x[0]), esc(x[1])]; }))

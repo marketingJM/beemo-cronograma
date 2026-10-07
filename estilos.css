@@ -335,3 +335,8 @@ button.mo-h:hover b{color:var(--violeta)}
 /* fecha de activación y moneda debajo de cada evento */
 .ev-extra{display:block;margin-top:6px;font-size:.9rem;color:var(--muted)}
 .ev-extra b{color:var(--ink);font-weight:600}
+
+/* tarjeta resumida: mentor, programa, ingresos e inicio */
+.ev-sub{display:block;margin-top:2px;font-size:.98rem;color:var(--ink);opacity:.85}
+.ev-datos{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:8px;font-size:.9rem;color:var(--muted)}
+.ev-datos b{color:var(--ink);font-weight:600}

@@ -345,3 +345,11 @@ button.mo-h:hover b{color:var(--violeta)}
 .ev-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:.9rem;color:var(--muted)}
 .ev-link{color:var(--violeta,#5b6cff);font-weight:600;text-decoration:underline;cursor:pointer;word-break:break-all}
 .ev-link:hover{opacity:.8}
+
+/* botón «Ver prueba» */
+.ev-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.btn-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;
+  background:var(--violeta,#5b6cff);color:#fff !important;font-size:.86rem;font-weight:700;
+  text-decoration:none !important;cursor:pointer;line-height:1;white-space:nowrap}
+.btn-link:hover{filter:brightness(1.1)}
+.link-aviso{font-size:.8rem;color:var(--muted)}

@@ -340,3 +340,8 @@ button.mo-h:hover b{color:var(--violeta)}
 .ev-sub{display:block;margin-top:2px;font-size:.98rem;color:var(--ink);opacity:.85}
 .ev-datos{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:8px;font-size:.9rem;color:var(--muted)}
 .ev-datos b{color:var(--ink);font-weight:600}
+
+/* links de prueba */
+.ev-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:.9rem;color:var(--muted)}
+.ev-link{color:var(--violeta,#5b6cff);font-weight:600;text-decoration:underline;cursor:pointer;word-break:break-all}
+.ev-link:hover{opacity:.8}

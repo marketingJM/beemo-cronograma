@@ -407,15 +407,17 @@ function linksHtml(txt, enFicha){
   txt = String(txt||"").trim();
   if(!txt) return "";
   var partes = txt.split(/[\s,;]+/).filter(Boolean);
-  var html = partes.map(function(u, i){
-    var url = /^https?:\/\//i.test(u) ? u : (/^[\w-]+(\.[\w-]+)+/.test(u) ? "https://"+u : "");
-    if(!url) return "<span>"+esc(u)+"</span>";
-    var texto = partes.length > 1 ? "Link "+(i+1) : "Abrir link";
+  var web = partes.filter(function(u){ return /^https?:\/\//i.test(u) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(u); });
+  var locales = partes.length - web.length;
+  var html = web.map(function(u, i){
+    var url = /^https?:\/\//i.test(u) ? u : "https://"+u;
+    var texto = web.length > 1 ? "Ver prueba "+(i+1) : "Ver prueba";
     return enFicha
-      ? '<a class="ev-link" href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(u)+"</a>"
-      : '<span class="ev-link" role="link" tabindex="0" data-link="'+esc(url)+'">🔗 '+texto+"</span>";
-  }).join(enFicha ? "<br>" : " ");
-  return enFicha ? html : '<span class="ev-links">Links de prueba: '+html+"</span>";
+      ? '<a class="btn-link" href="'+esc(url)+'" target="_blank" rel="noopener">'+texto+' ↗</a>'
+      : '<span class="btn-link" role="link" tabindex="0" data-link="'+esc(url)+'">'+texto+' ↗</span>';
+  }).join("");
+  if(locales) html += '<span class="link-aviso">'+(locales===1?"1 link":locales+" links")+' guardado en un computador (no se puede abrir desde la web)</span>';
+  return '<span class="ev-links">'+html+"</span>";
 }
 function activacionTxt(e){ return e.activacion ? fmtLong(e.activacion) : (e.activacionTxt || ""); }
 function extraHtml(e){

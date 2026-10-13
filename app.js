@@ -123,10 +123,11 @@ var ALIASES = {
   notas:["notas","nota","observaciones","comentarios","detalle"],
   activacion:["fecha de activacion","fecha activacion","activacion","fecha de la activacion"],
   moneda:["moneda transaccion","moneda de transaccion","moneda de la transaccion","moneda"],
+  links:["links de prueba","link de prueba","links prueba","link prueba"],
   ingresoReal:["ingreso usd","ingresos usd","ingreso en usd","ingresos en usd","ingreso real usd"]
 };
 /* Para estas columnas basta con que el título contenga la palabra */
-var CONTIENE = { activacion:"activacion", moneda:"moneda" };
+var CONTIENE = { activacion:"activacion", moneda:"moneda", links:"prueba" };
 var ALIAS_SET = {};
 Object.keys(ALIASES).forEach(function(k){ ALIASES[k].forEach(function(a){ ALIAS_SET[a] = true; }); });
 function findCols(header){
@@ -216,6 +217,7 @@ function buildEvents(rows, ocultas){
       responsable: get(r,"responsable"),
       notas: get(r,"notas"),
       activacion: parseDate(get(r,"activacion")),
+      links: get(r,"links"),
       activacionTxt: get(r,"activacion"),
       moneda: get(r,"moneda"),
       ingresoReal: parseNum(get(r,"ingresoReal")),
@@ -400,6 +402,21 @@ function ingresoUsdTxt(e){
   if(e.ingresoReal !== null && e.ingresoReal !== undefined) return usd(e.ingresoReal);
   return e.ingUsd ? usd(e.ingUsd)+" (estimado)" : "";
 }
+/* Links de prueba: uno o varios (separados por coma, espacio o salto de línea) */
+function linksHtml(txt, enFicha){
+  txt = String(txt||"").trim();
+  if(!txt) return "";
+  var partes = txt.split(/[\s,;]+/).filter(Boolean);
+  var html = partes.map(function(u, i){
+    var url = /^https?:\/\//i.test(u) ? u : (/^[\w-]+(\.[\w-]+)+/.test(u) ? "https://"+u : "");
+    if(!url) return "<span>"+esc(u)+"</span>";
+    var texto = partes.length > 1 ? "Link "+(i+1) : "Abrir link";
+    return enFicha
+      ? '<a class="ev-link" href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(u)+"</a>"
+      : '<span class="ev-link" role="link" tabindex="0" data-link="'+esc(url)+'">🔗 '+texto+"</span>";
+  }).join(enFicha ? "<br>" : " ");
+  return enFicha ? html : '<span class="ev-links">Links de prueba: '+html+"</span>";
+}
 function activacionTxt(e){ return e.activacion ? fmtLong(e.activacion) : (e.activacionTxt || ""); }
 function extraHtml(e){
   var bits = [];
@@ -451,6 +468,7 @@ function renderAgenda(){
             (ingresoUsdTxt(e) ? '<span>Ingresos USD: <b>'+esc(ingresoUsdTxt(e))+"</b></span>" : "")+
             '<span>Inicio: <b>'+esc(fmtLong(e.ini))+"</b></span>"+
           "</span>"+
+          linksHtml(e.links, false)+
         "</span></button>";
     });
   });
@@ -631,6 +649,7 @@ function openDetail(ev){
     ["Tipo", '<span class="pill tipo" style="background:'+color+'">'+esc(ev.tipo)+"</span>"],
     ["Fechas", esc(fmtRange(ev.ini, ev.fin))+(dias>1 ? " · "+dias+" días" : "")],
     ["Fecha de activación", esc(activacionTxt(ev))],
+    ["Links de prueba", linksHtml(ev.links, true)],
     ["Moneda transacción", esc(ev.moneda)],
     ["Registros", ev.registros !== null ? esc(miles(ev.registros)) : ""],
     ["Asistentes", ev.asistentes !== null ? esc(miles(ev.asistentes)) : ""],
@@ -682,6 +701,8 @@ function renderAll(){
 
 /* ---------------- UI ---------------- */
 document.addEventListener("click", function(ev){
+  var lk = ev.target.closest ? ev.target.closest("[data-link]") : null;
+  if(lk){ ev.stopPropagation(); window.open(lk.getAttribute("data-link"), "_blank", "noopener"); return; }
   var t = ev.target.closest ? ev.target.closest("[data-ev]") : null;
   if(t){
     var id = +t.getAttribute("data-ev");

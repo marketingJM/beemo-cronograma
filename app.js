@@ -187,6 +187,15 @@ function buildEvents(rows, ocultas){
     if(!usadas[i] && String(h).trim() && !oc[norm(h)] && !(norm(h) in ALIAS_SET)) extras.push(i);
   });
   var get = function(r,k){ return idx[k]>=0 ? (r[idx[k]]||"") : ""; };
+  /* Links de prueba: también las columnas SIN título que siguen a la derecha
+     (cuando los links se pegan y el Sheet los reparte en varias casillas) */
+  var colsLinks = [];
+  if(idx.links >= 0){
+    colsLinks.push(idx.links);
+    var maxCols = rows.reduce(function(m, r){ return Math.max(m, r.length); }, head.length);
+    for(var c = idx.links+1; c < maxCols && !String(head[c]||"").trim(); c++) colsLinks.push(c);
+  }
+  var getLinks = function(r){ return colsLinks.map(function(c){ return r[c]||""; }).join("\n"); };
   var evs=[];
   for(var j=hi+1;j<rows.length;j++){
     var r=rows[j];
@@ -217,7 +226,7 @@ function buildEvents(rows, ocultas){
       responsable: get(r,"responsable"),
       notas: get(r,"notas"),
       activacion: parseDate(get(r,"activacion")),
-      links: get(r,"links"),
+      links: getLinks(r),
       activacionTxt: get(r,"activacion"),
       moneda: get(r,"moneda"),
       ingresoReal: parseNum(get(r,"ingresoReal")),

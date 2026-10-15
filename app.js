@@ -124,10 +124,11 @@ var ALIASES = {
   activacion:["fecha de activacion","fecha activacion","activacion","fecha de la activacion"],
   moneda:["moneda transaccion","moneda de transaccion","moneda de la transaccion","moneda"],
   links:["links de prueba","link de prueba","links prueba","link prueba"],
+  hora:["hora de lanzamiento","hora lanzamiento","hora del lanzamiento","hora"],
   ingresoReal:["ingreso usd","ingresos usd","ingreso en usd","ingresos en usd","ingreso real usd"]
 };
 /* Para estas columnas basta con que el título contenga la palabra */
-var CONTIENE = { activacion:"activacion", moneda:"moneda", links:"prueba" };
+var CONTIENE = { activacion:"activacion", moneda:"moneda", links:"prueba", hora:"hora" };
 var ALIAS_SET = {};
 Object.keys(ALIASES).forEach(function(k){ ALIASES[k].forEach(function(a){ ALIAS_SET[a] = true; }); });
 function findCols(header){
@@ -193,9 +194,14 @@ function buildEvents(rows, ocultas){
   if(idx.links >= 0){
     colsLinks.push(idx.links);
     var maxCols = rows.reduce(function(m, r){ return Math.max(m, r.length); }, head.length);
-    for(var c = idx.links+1; c < maxCols && !String(head[c]||"").trim(); c++) colsLinks.push(c);
+    for(var c = idx.links+1; c < maxCols; c++) if(!String(head[c]||"").trim()) colsLinks.push(c);
   }
-  var getLinks = function(r){ return colsLinks.map(function(c){ return r[c]||""; }).join("\n"); };
+  var esUrl = function(v){ return /^\s*(https?:\/\/|www\.)/i.test(v||""); };
+  var getLinks = function(r){
+    var v = colsLinks.map(function(c){ return r[c]||""; });
+    if(esUrl(get(r,"hora"))) v.push(get(r,"hora"));   // si quedó un link bajo «Hora», también es link
+    return v.join("\n");
+  };
   var evs=[];
   for(var j=hi+1;j<rows.length;j++){
     var r=rows[j];
@@ -227,6 +233,7 @@ function buildEvents(rows, ocultas){
       notas: get(r,"notas"),
       activacion: parseDate(get(r,"activacion")),
       links: getLinks(r),
+      hora: esUrl(get(r,"hora")) ? "" : String(get(r,"hora")).trim(),
       activacionTxt: get(r,"activacion"),
       moneda: get(r,"moneda"),
       ingresoReal: parseNum(get(r,"ingresoReal")),
@@ -489,6 +496,7 @@ function renderAgenda(){
             '<span>Inicio: <b>'+esc(fmtLong(e.ini))+"</b></span>"+
           "</span>"+
           linksHtml(e.links, false)+
+          (e.hora ? '<span class="ev-hora">Hora de lanzamiento: <b>'+esc(e.hora)+"</b></span>" : "")+
         "</span></button>";
     });
   });
@@ -670,6 +678,7 @@ function openDetail(ev){
     ["Fechas", esc(fmtRange(ev.ini, ev.fin))+(dias>1 ? " · "+dias+" días" : "")],
     ["Fecha de activación", esc(activacionTxt(ev))],
     ["Links de prueba", linksHtml(ev.links, true)],
+    ["Hora de lanzamiento", esc(ev.hora)],
     ["Moneda transacción", esc(ev.moneda)],
     ["Registros", ev.registros !== null ? esc(miles(ev.registros)) : ""],
     ["Asistentes", ev.asistentes !== null ? esc(miles(ev.asistentes)) : ""],

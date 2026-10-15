@@ -183,20 +183,24 @@ function buildEvents(rows, ocultas){
     if(oc[norm(head[idx[k]])] && FIJAS.indexOf(k) < 0) idx[k] = -1;   // columna oculta por el administrador
     else usadas[idx[k]] = true;
   });
-  var extras = [];
-  head.forEach(function(h,i){
-    if(!usadas[i] && String(h).trim() && !oc[norm(h)] && !(norm(h) in ALIAS_SET)) extras.push(i);
-  });
   var get = function(r,k){ return idx[k]>=0 ? (r[idx[k]]||"") : ""; };
   /* Links de prueba: también las columnas SIN título que siguen a la derecha
      (cuando los links se pegan y el Sheet los reparte en varias casillas) */
   var colsLinks = [];
   if(idx.links >= 0){
-    colsLinks.push(idx.links);
     var maxCols = rows.reduce(function(m, r){ return Math.max(m, r.length); }, head.length);
-    for(var c = idx.links+1; c < maxCols; c++) if(!String(head[c]||"").trim()) colsLinks.push(c);
+    for(var c = idx.links; c < maxCols; c++){
+      var hc = norm(head[c]);
+      // «Links de prueba», «Links de prueba 1…5» y las columnas sin título de la derecha
+      if(!hc || hc.indexOf("prueba") >= 0) colsLinks.push(c);
+    }
+    colsLinks.forEach(function(c){ usadas[c] = true; });
   }
   var esUrl = function(v){ return /^\s*(https?:\/\/|www\.)/i.test(v||""); };
+  var extras = [];
+  head.forEach(function(h,i){
+    if(!usadas[i] && String(h).trim() && !oc[norm(h)] && !(norm(h) in ALIAS_SET)) extras.push(i);
+  });
   var getLinks = function(r){
     var v = colsLinks.map(function(c){ return r[c]||""; });
     if(esUrl(get(r,"hora"))) v.push(get(r,"hora"));   // si quedó un link bajo «Hora», también es link

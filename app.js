@@ -402,21 +402,30 @@ function ingresoUsdTxt(e){
   if(e.ingresoReal !== null && e.ingresoReal !== undefined) return usd(e.ingresoReal);
   return e.ingUsd ? usd(e.ingUsd)+" (estimado)" : "";
 }
-/* Links de prueba: uno o varios (separados por coma, espacio o salto de línea) */
-function linksHtml(txt, enFicha){
-  txt = String(txt||"").trim();
-  if(!txt) return "";
-  var partes = txt.split(/[\s,;]+/).filter(Boolean);
-  var web = partes.filter(function(u){ return /^https?:\/\//i.test(u) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(u); });
-  var locales = partes.length - web.length;
-  var html = web.map(function(u, i){
+/* Links de prueba: saca TODOS los links de la celda, sin importar cómo estén separados */
+function sacarLinks(txt){
+  txt = String(txt||"").replace(/(?!^)(https?:\/\/|file:\/\/)/gi, " $1");   // links pegados uno tras otro
+  var crudos = txt.match(/(https?:\/\/|file:\/\/\/?|www\.)[^\s,;|<>"'()]+|\b[\w-]+(\.[\w-]+)+\/[^\s,;|<>"'()]*/gi) || [];
+  var vistos = {}, web = [], locales = 0;
+  crudos.forEach(function(u){
+    u = u.replace(/[.)\]]+$/, "");
+    if(/^file:/i.test(u)){ locales++; return; }
     var url = /^https?:\/\//i.test(u) ? u : "https://"+u;
-    var texto = web.length > 1 ? "Ver prueba "+(i+1) : "Ver prueba";
+    if(!vistos[url]){ vistos[url] = true; web.push(url); }
+  });
+  return { web: web, locales: locales };
+}
+function linksHtml(txt, enFicha){
+  if(!String(txt||"").trim()) return "";
+  var r = sacarLinks(txt);
+  if(!r.web.length && !r.locales) return "";
+  var html = r.web.map(function(url, i){
+    var texto = r.web.length > 1 ? "Ver prueba "+(i+1) : "Ver prueba";
     return enFicha
       ? '<a class="btn-link" href="'+esc(url)+'" target="_blank" rel="noopener">'+texto+' ↗</a>'
       : '<span class="btn-link" role="link" tabindex="0" data-link="'+esc(url)+'">'+texto+' ↗</span>';
   }).join("");
-  if(locales) html += '<span class="link-aviso">'+(locales===1?"1 link":locales+" links")+' guardado en un computador (no se puede abrir desde la web)</span>';
+  if(r.locales) html += '<span class="link-aviso">'+(r.locales===1?"1 link guardado":r.locales+" links guardados")+' en un computador (no se pueden abrir desde la web)</span>';
   return '<span class="ev-links">'+html+"</span>";
 }
 function activacionTxt(e){ return e.activacion ? fmtLong(e.activacion) : (e.activacionTxt || ""); }

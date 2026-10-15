@@ -189,10 +189,13 @@ function buildEvents(rows, ocultas){
   var colsLinks = [];
   if(idx.links >= 0){
     var maxCols = rows.reduce(function(m, r){ return Math.max(m, r.length); }, head.length);
-    for(var c = idx.links; c < maxCols; c++){
+    // TODAS las columnas «Links de prueba…» (en cualquier orden) y las sin título que les siguen
+    var enLinks = false;
+    for(var c = 0; c < maxCols; c++){
       var hc = norm(head[c]);
-      // «Links de prueba», «Links de prueba 1…5» y las columnas sin título de la derecha
-      if(!hc || hc.indexOf("prueba") >= 0) colsLinks.push(c);
+      if(hc.indexOf("prueba") >= 0){ colsLinks.push(c); enLinks = true; }
+      else if(!hc && enLinks) colsLinks.push(c);
+      else enLinks = false;
     }
     colsLinks.forEach(function(c){ usadas[c] = true; });
   }
@@ -237,7 +240,7 @@ function buildEvents(rows, ocultas){
       notas: get(r,"notas"),
       activacion: parseDate(get(r,"activacion")),
       links: getLinks(r),
-      hora: esUrl(get(r,"hora")) ? "" : String(get(r,"hora")).trim(),
+      hora: esUrl(get(r,"hora")) ? "" : String(get(r,"hora")).trim().replace(/(\d{1,2}:\d{2}):00(?!\d)/, "$1"),
       activacionTxt: get(r,"activacion"),
       moneda: get(r,"moneda"),
       ingresoReal: parseNum(get(r,"ingresoReal")),
